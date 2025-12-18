@@ -644,31 +644,36 @@
 
         // Google AdSense
         function initAds() {
-            const adTop = document.getElementById('ad-top');
-            const adBottom = document.getElementById('ad-bottom');
-            
-            adTop.innerHTML = `
-                <ins class="adsbygoogle"
-                     style="display:block"
-                     data-ad-client="ca-pub-6145415442076452"
-                     data-ad-slot="1234567890"
-                     data-ad-format="auto"
-                     data-full-width-responsive="true"></ins>
-            `;
-            
-            adBottom.innerHTML = `
-                <ins class="adsbygoogle"
-                     style="display:block"
-                     data-ad-client="ca-pub-6145415442076452"
-                     data-ad-slot="0987654321"
-                     data-ad-format="auto"
-                     data-full-width-responsive="true"></ins>
-            `;
+    const adTop = document.getElementById('ad-top');
+    const adBottom = document.getElementById('ad-bottom');
 
-            if (window.adsbygoogle) {
-                window.adsbygoogle.push({});
-            }
-        }
+    // TOP AD
+    if (adTop && adTop.children.length === 0) {
+        adTop.innerHTML = `
+            <ins class="adsbygoogle"
+                 style="display:block; min-height:90px"
+                 data-ad-client="ca-pub-6145415442076452"
+                 data-ad-slot="5060125024"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
+        `;
+    }
+
+    // BOTTOM AD
+    if (adBottom && adBottom.children.length === 0) {
+        adBottom.innerHTML = `
+            <ins class="adsbygoogle"
+                 style="display:block; min-height:90px"
+                 data-ad-client="ca-pub-6145415442076452"
+                 data-ad-slot="5716221838"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
+        `;
+    }
+
+    // Inicializa anúncios (uma vez por <ins>)
+    (adsbygoogle = window.adsbygoogle || []).push({});
+    (adsbygoogle = window.adsbygoogle || []).push({});
 
         // Global functions
         window.enterEditor = () => Navigation.enterEditor();
