@@ -9,11 +9,11 @@
     <meta property="og:title" content="FMBE Editor - Ferramenta de Animação Bedrock">
     <meta property="og:description" content="Editor visual 3D para criar animações do Minecraft Bedrock">
     <meta property="og:type" content="website">
-    
+    <meta name="google-adsense-account" content="ca-pub-6145415442076452">
     <link rel="preconnect" href="https://unpkg.com">
     <link rel="preconnect" href="https://pagead2.googlesyndication.com">
     <link rel="manifest" href="/manifest.json">
-    <meta name="google-adsense-account" content="ca-pub-6145415442076452">
+    
     <title>FMBE Pro Editor</title>
     
     <style>
@@ -35,7 +35,32 @@
         .hero-section { text-align: center; margin-top: 20px; }
         .hero-title { font-size: 2rem; font-weight: 800; color: var(--accent); margin-bottom: 5px; }
         .hero-subtitle { color: var(--text-dim); font-size: 1rem; }
-        .ad-container { width: 100%; max-width: 320px; height: 100px; background: #222; border: 1px dashed #444; display: flex; align-items: center; justify-content: center; color: #555; font-weight: bold; border-radius: 8px; margin: 20px 0; position: relative; overflow: hidden; }
+        .ad-container { 
+            width: 100%; 
+            max-width: 340px; 
+            min-height: 120px;
+            background: #222; 
+            border: 1px solid #333; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: #666; 
+            font-weight: bold; 
+            border-radius: 8px; 
+            margin: 20px 0; 
+            position: relative; 
+            overflow: visible;
+        }
+        .ad-container ins {
+            width: 320px !important;
+            height: 100px !important;
+            display: inline-block !important;
+        }
+        .adsbygoogle {
+            display: inline-block !important;
+            width: 320px !important;
+            height: 100px !important;
+        }
         .btn-enter { background: var(--accent); color: white; padding: 15px 40px; border-radius: 50px; font-size: 1.2rem; font-weight: bold; border: none; box-shadow: 0 4px 20px rgba(88, 101, 242, 0.5); cursor: pointer; transition: transform 0.2s; margin: 20px 0; }
         .btn-enter:active { transform: scale(0.95); }
         .features-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 400px; }
@@ -251,29 +276,41 @@
             { k: 'scale', n: 'Escala Geral' }, { k: 'xzscale', n: 'Escala Largura' }, { k: 'yscale', n: 'Escala Altura' },
             { k: 'xbasepos', n: 'BasePos X' }, { k: 'ybasepos', n: 'BasePos Y' }, { k: 'zbasepos', n: 'BasePos Z' }
         ];
+
+        // Funções globais para HTML onclick
+        window.enterEditor = () => {
+            document.getElementById('home-view').style.display = 'none';
+            document.getElementById('editor-view').style.display = 'flex';
+            sessionStorage.setItem('fmbe_session', 'active');
+            if(window.editor) window.editor.resize();
+        };
+        window.setTool = (t) => window.editor?.setTool(t);
+        window.setContext = (c) => window.editor?.setContext(c);
+        window.manualInput = (k) => window.uiManager?.manualInput(k);
+        window.updateScale = (k, v) => window.uiManager?.updateScale(k, v);
+        window.switchTab = (t) => window.uiManager?.switchTab(t);
+        window.addAnimBlock = () => window.uiManager?.addAnimBlock();
+        window.toggleAnimation = () => {
+            const playing = window.editor?.toggleAnimation();
+            const btn = document.getElementById('btn-play');
+            if (btn) {
+                if (playing) {
+                    btn.classList.add('active');
+                    btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+                } else {
+                    btn.classList.remove('active');
+                    btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>';
+                }
+            }
+        };
+        window.resetAnimation = () => window.editor?.resetAnimation();
+        window.copyCommand = () => window.uiManager?.copyCommand();
     </script>
 
     <script type="module">
         import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
         import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
         import { TransformControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/TransformControls.js';
-
-        // ========== NAVIGATION ==========
-        class Navigation {
-            static enterEditor() {
-                document.getElementById('home-view').style.display = 'none';
-                document.getElementById('editor-view').style.display = 'flex';
-                sessionStorage.setItem('fmbe_session', 'active');
-                if(window.editor) window.editor.resize();
-            }
-            static setupHomeView() {
-                window.addEventListener('load', () => {
-                    sessionStorage.removeItem('fmbe_session');
-                    document.getElementById('home-view').style.display = 'flex';
-                    document.getElementById('editor-view').style.display = 'none';
-                });
-            }
-        }
 
         // ========== THREE.JS EDITOR ==========
         class ThreeJSEditor {
@@ -285,7 +322,12 @@
                 this.setupScene();
                 this.setupControls();
                 this.setupObjects();
-                this.animate();
+                
+                // Renderizar imediatamente e iniciar loop
+                setTimeout(() => {
+                    this.renderer.render(this.scene, this.camera);
+                    this.animate();
+                }, 10);
             }
 
             setupScene() {
@@ -293,9 +335,10 @@
                 this.scene.background = new THREE.Color(0x121212);
                 this.camera = new THREE.PerspectiveCamera(50, this.container.clientWidth / this.container.clientHeight, 0.1, 1000);
                 this.camera.position.set(30, 40, 40);
-                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
                 this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
                 this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.renderer.setClearColor(0x121212, 1);
                 this.container.appendChild(this.renderer.domElement);
                 this.scene.add(new THREE.AmbientLight(0xffffff, 0.6));
                 const dl = new THREE.DirectionalLight(0xffffff, 1);
@@ -303,6 +346,9 @@
                 this.scene.add(dl);
                 this.scene.add(new THREE.GridHelper(160, 10, 0x444444, 0x222222));
                 this.scene.add(new THREE.AxesHelper(10));
+                
+                // Renderizar uma vez imediatamente para evitar tela preta
+                this.renderer.render(this.scene, this.camera);
             }
 
             setupObjects() {
@@ -404,7 +450,8 @@
 
             animate = () => {
                 requestAnimationFrame(this.animate);
-                if (document.getElementById('editor-view').style.display === 'none') return;
+                const editorView = document.getElementById('editor-view');
+                if (!editorView || editorView.style.display === 'none') return;
                 this.orbit.update();
                 const t = (Date.now() - this.startTime) / 1000;
                 const cur = {};
@@ -642,73 +689,70 @@
         window.uiManager = new UIManager(window.editor);
         window.bottomSheet = new BottomSheet();
 
-        // Google AdSense
+        // Google AdSense - Inicializar anúncios
+        let adsPushed = false; // Flag para evitar múltiplos push
         function initAds() {
-    const adTop = document.getElementById('ad-top');
-    const adBottom = document.getElementById('ad-bottom');
+            try {
+                const adTop = document.getElementById('ad-top');
+                const adBottom = document.getElementById('ad-bottom');
 
-    // TOP AD
-    if (adTop && adTop.children.length === 0) {
-        adTop.innerHTML = `
-            <ins class="adsbygoogle"
-                 style="display:block; min-height:90px"
-                 data-ad-client="ca-pub-6145415442076452"
-                 data-ad-slot="5060125024"
-                 data-ad-format="auto"
-                 data-full-width-responsive="true"></ins>
-        `;
-    }
+                // Contar ads já renderizados
+                const existingAds = document.querySelectorAll('.adsbygoogle').length;
 
-    // BOTTOM AD
-    if (adBottom && adBottom.children.length === 0) {
-        adBottom.innerHTML = `
-            <ins class="adsbygoogle"
-                 style="display:block; min-height:90px"
-                 data-ad-client="ca-pub-6145415442076452"
-                 data-ad-slot="5716221838"
-                 data-ad-format="auto"
-                 data-full-width-responsive="true"></ins>
-        `;
-    }
+                // TOP AD
+                if (adTop && adTop.querySelectorAll('.adsbygoogle').length === 0) {
+                    const ins = document.createElement('ins');
+                    ins.className = 'adsbygoogle';
+                    ins.setAttribute('style', 'display:inline-block;width:320px;height:100px');
+                    ins.setAttribute('data-ad-client', 'ca-pub-6145415442076452');
+                    ins.setAttribute('data-ad-slot', '5060125024');
+                    ins.setAttribute('data-ad-format', 'auto');
+                    ins.setAttribute('data-full-width-responsive', 'true');
+                    adTop.appendChild(ins);
+                    console.log('[AdSense] Top ad unit adicionado (slot: 5060125024)');
+                }
 
-    // Inicializa anúncios (uma vez por <ins>)
-    (adsbygoogle = window.adsbygoogle || []).push({});
-    (adsbygoogle = window.adsbygoogle || []).push({});
+                // BOTTOM AD
+                if (adBottom && adBottom.querySelectorAll('.adsbygoogle').length === 0) {
+                    const ins = document.createElement('ins');
+                    ins.className = 'adsbygoogle';
+                    ins.setAttribute('style', 'display:inline-block;width:320px;height:100px');
+                    ins.setAttribute('data-ad-client', 'ca-pub-6145415442076452');
+                    ins.setAttribute('data-ad-slot', '5716221838');
+                    ins.setAttribute('data-ad-format', 'auto');
+                    ins.setAttribute('data-full-width-responsive', 'true');
+                    adBottom.appendChild(ins);
+                    console.log('[AdSense] Bottom ad unit adicionado (slot: 5716221838)');
+                }
 
-        // Global functions
-        window.enterEditor = () => Navigation.enterEditor();
-        window.setTool = (t) => window.editor.setTool(t);
-        window.setContext = (c) => window.editor.setContext(c);
-        window.manualInput = (k) => window.uiManager.manualInput(k);
-        window.updateScale = (k, v) => window.uiManager.updateScale(k, v);
-        window.addAnimBlock = () => window.uiManager.addAnimBlock();
-        window.removeBlock = (id) => window.uiManager.removeBlock(id);
-        window.updateBlock = (id, field, val) => window.uiManager.updateBlock(id, field, val);
-        window.switchTab = (t) => window.uiManager.switchTab(t);
-        window.copyCommand = () => window.uiManager.copyCommand();
-        window.resizeEditor = () => window.editor.resize();
-        
-        window.toggleAnimation = () => {
-            const isPlaying = window.editor.toggleAnimation();
-            const btn = document.getElementById('btn-play');
-            if (isPlaying) {
-                btn.classList.add('active');
-                btn.title = 'Pausar animação';
-            } else {
-                btn.classList.remove('active');
-                btn.title = 'Play animação';
+                // Processar ads com AdSense - fazer push apenas UMA VEZ
+                if (window.adsbygoogle && !adsPushed) {
+                    window.adsbygoogle.push({});
+                    adsPushed = true;
+                    console.log('[AdSense] AdSense.push() executado com sucesso');
+                } else if (!window.adsbygoogle) {
+                    console.warn('[AdSense] window.adsbygoogle não disponível ainda');
+                }
+            } catch(e) {
+                console.error('[AdSense] Erro ao inicializar anúncios:', e);
             }
-        };
-        
-        window.resetAnimation = () => {
-            window.editor.resetAnimation();
-        };
+        }
 
-        Navigation.setupHomeView();
-        window.addEventListener('resize', () => window.editor.resize());
-        
-        // Inicializar anúncios
-        setTimeout(initAds, 500);
+        // Inicializar anúncios quando página carregar
+        function scheduleAdInit() {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => {
+                    // Tentar inicializar apenas 2 vezes - na primeira o push vai funcionar
+                    setTimeout(initAds, 100);
+                    setTimeout(initAds, 1000);
+                });
+            } else {
+                // DOM já está pronto
+                setTimeout(initAds, 100);
+                setTimeout(initAds, 1000);
+            }
+        }
+        scheduleAdInit();
     </script>
 </body>
 </html>
