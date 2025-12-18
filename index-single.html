@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#5865F2">
+    <meta name="description" content="FMBE Editor - Ferramenta Visual de Animação Bedrock. Crie, visualize e exporte animações para Minecraft Bedrock com interface 3D intuitiva.">
+    <meta name="keywords" content="Bedrock, Animation, Minecraft, 3D Editor, Game Development">
+    <meta property="og:title" content="FMBE Editor - Ferramenta de Animação Bedrock">
+    <meta property="og:description" content="Editor visual 3D para criar animações do Minecraft Bedrock">
+    <meta property="og:type" content="website">
+    
+    <link rel="preconnect" href="https://unpkg.com">
+    <link rel="preconnect" href="https://pagead2.googlesyndication.com">
+    <link rel="manifest" href="/manifest.json">
+    
+    <title>FMBE Pro Editor</title>
+    
+    <style>
+        :root {
+            --bg: #121212;
+            --panel: #1e1e1e;
+            --surface: #2c2c2c;
+            --accent: #5865F2;
+            --text-main: #eeeeee;
+            --text-dim: #aaaaaa;
+            --border: #3a3a3a;
+            --safe-area-bottom: env(safe-area-inset-bottom);
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; overflow: hidden; background: var(--bg); color: var(--text-main); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; }
+        #home-view, #editor-view { width: 100vw; height: 100vh; position: absolute; inset: 0; }
+        #editor-view { display: none; }
+        #home-view { display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 20px; overflow-y: auto; background: radial-gradient(circle at center, #2a2a2a 0%, #121212 100%); z-index: 999; }
+        .hero-section { text-align: center; margin-top: 20px; }
+        .hero-title { font-size: 2rem; font-weight: 800; color: var(--accent); margin-bottom: 5px; }
+        .hero-subtitle { color: var(--text-dim); font-size: 1rem; }
+        .ad-container { width: 100%; max-width: 320px; height: 100px; background: #222; border: 1px dashed #444; display: flex; align-items: center; justify-content: center; color: #555; font-weight: bold; border-radius: 8px; margin: 20px 0; position: relative; overflow: hidden; }
+        .btn-enter { background: var(--accent); color: white; padding: 15px 40px; border-radius: 50px; font-size: 1.2rem; font-weight: bold; border: none; box-shadow: 0 4px 20px rgba(88, 101, 242, 0.5); cursor: pointer; transition: transform 0.2s; margin: 20px 0; }
+        .btn-enter:active { transform: scale(0.95); }
+        .features-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 400px; }
+        .feature-card { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; text-align: center; font-size: 0.9rem; border: 1px solid rgba(255,255,255,0.1); }
+        #canvas-container { flex: 1; position: relative; width: 100%; height: 100%; overflow: hidden; }
+        #top-bar { position: absolute; top: 10px; left: 10px; right: 10px; height: 44px; background: rgba(30, 30, 30, 0.9); backdrop-filter: blur(10px); border-radius: 12px; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; z-index: 10; border: 1px solid rgba(255,255,255,0.1); }
+        .tool-group { display: flex; gap: 5px; background: var(--surface); padding: 3px; border-radius: 8px; }
+        .icon-btn { width: 32px; height: 32px; border: none; background: transparent; color: var(--text-dim); border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .icon-btn.active { background: var(--accent); color: white; }
+        .icon-btn svg { width: 18px; height: 18px; fill: currentColor; }
+        .icon-btn:active { transform: scale(0.9); }
+        .mode-switch { display: flex; align-items: center; background: var(--surface); border-radius: 8px; padding: 2px; }
+        .mode-opt { padding: 4px 8px; font-size: 10px; font-weight: bold; color: var(--text-dim); border-radius: 6px; cursor: pointer; text-transform: uppercase; }
+        .mode-opt.active { background: var(--text-main); color: var(--bg); }
+        #bottom-sheet { position: absolute; left: 0; right: 0; bottom: 0; height: 45%; background: var(--panel); border-radius: 20px 20px 0 0; box-shadow: 0 -5px 20px rgba(0,0,0,0.5); display: flex; flex-direction: column; z-index: 20; transition: height 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
+        #drag-area { width: 100%; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        #drag-pill { width: 40px; height: 20px; background: transparent; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #666; }
+        .arrow-icon { width: 12px; height: 12px; fill: currentColor; transition: transform 0.3s; }
+        .collapsed .arrow-icon { transform: rotate(180deg); }
+        #panel-tabs { display: flex; border-bottom: 1px solid var(--border); padding: 0 15px; }
+        .tab { padding: 12px 15px; color: var(--text-dim); font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; }
+        .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+        #panel-content { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: calc(70px + var(--safe-area-bottom)); }
+        .view { display: none; }
+        .view.active { display: block; }
+        .control-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
+        .control-group { background: var(--surface); padding: 8px; border-radius: 8px; }
+        .group-label { font-size: 10px; color: var(--accent); font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
+        .prop-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+        .prop-label { font-family: monospace; font-size: 11px; color: #aaa; width: 20px; }
+        input[type="number"] { flex: 1; background: #1a1a1a; border: 1px solid var(--border); color: white; border-radius: 4px; padding: 6px; text-align: right; }
+        input[type="range"] { flex: 1; height: 6px; border-radius: 3px; background: var(--surface); outline: none; -webkit-appearance: none; appearance: none; padding: 0; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); cursor: pointer; box-shadow: 0 0 8px rgba(88, 101, 242, 0.5); }
+        input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--accent); cursor: pointer; border: none; box-shadow: 0 0 8px rgba(88, 101, 242, 0.5); }
+        .value-display { font-family: monospace; font-size: 11px; color: var(--accent); min-width: 30px; text-align: right; }
+        input.has-molang { border-color: var(--accent); color: var(--accent); background: #1a1a2e; }
+        .anim-block { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 6px; padding: 10px; margin-bottom: 8px; }
+        .anim-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .btn-remove { color: #ff5555; background: none; border: none; font-size: 18px; padding: 0 8px; cursor: pointer;}
+        .anim-params { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 5px; }
+        select { background: #151515; color: white; border: 1px solid #444; border-radius: 4px; padding: 6px; width: 100%; }
+        #add-anim-btn { width: 100%; padding: 14px; background: #252525; border: 1px dashed #555; color: #aaa; border-radius: 8px; margin-top: 10px; cursor: pointer; font-weight: bold; }
+        #export-fab { position: absolute; bottom: 20px; right: 20px; background: var(--accent); color: white; padding: 12px 20px; border-radius: 30px; font-weight: bold; border: none; box-shadow: 0 4px 15px rgba(88, 101, 242, 0.4); z-index: 30; display: flex; align-items: center; gap: 8px; }
+    </style>
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6145415442076452" crossorigin="anonymous"></script>
+</head>
+<body>
+
+    <!-- === PÁGINA INICIAL === -->
+    <div id="home-view">
+        <div class="hero-section">
+            <div class="hero-title">FMBE EDITOR</div>
+            <div class="hero-subtitle">Ferramenta Visual de Animação Bedrock</div>
+        </div>
+
+        <div class="ad-container" id="ad-top"></div>
+
+        <div class="features-grid">
+            <div class="feature-card">Visualização 3D Real</div>
+            <div class="feature-card">Gerador Molang</div>
+            <div class="feature-card">Simulador BasePos</div>
+            <div class="feature-card">Mobile Friendly</div>
+        </div>
+
+        <button class="btn-enter" onclick="enterEditor()">ABRIR EDITOR</button>
+
+        <div class="ad-container" id="ad-bottom"></div>
+
+        <div style="font-size: 10px; color: #444; margin-bottom: 10px;">v2.2 - FMBE Editor | Pronto para Produção</div>
+    </div>
+
+    <!-- === EDITOR VIEW === -->
+    <div id="editor-view">
+        <div id="top-bar">
+            <div class="mode-switch">
+                <div class="mode-opt active" onclick="setContext('global')" id="ctx-global">POS (ENT)</div>
+                <div class="mode-opt" onclick="setContext('local')" id="ctx-local">BASE (GEO)</div>
+            </div>
+
+            <div class="tool-group">
+                <button class="icon-btn active" onclick="setTool('translate')" id="tool-translate" title="Mover">
+                    <svg viewBox="0 0 24 24"><path d="M12 2L15 5H13V11H19V9L22 12L19 15V13H13V19H15L12 22L9 19H11V13H5V15L2 12L5 9V11H11V5H9L12 2Z"/></svg>
+                </button>
+                <button class="icon-btn" onclick="setTool('rotate')" id="tool-rotate" title="Rotacionar">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C17.5 2 22 6.5 22 12C22 17.5 17.5 22 12 22C6.5 22 2 17.5 2 12C2 10.1 2.5 8.3 3.4 6.7L4.8 8.1C4.3 9.3 4 10.6 4 12C4 16.4 7.6 20 12 20C16.4 20 20 16.4 20 12C20 7.6 16.4 4 12 4V7L7 2.5L12 -2V2Z"/></svg>
+                </button>
+                <button class="icon-btn" onclick="setTool('scale')" id="tool-scale" title="Escala">
+                    <svg viewBox="0 0 24 24"><path d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM12 18L9 12H15L12 18ZM15 9H9L12 3.5L15 9Z"/></svg>
+                </button>
+            </div>
+
+            <div class="tool-group">
+                <button class="icon-btn active" onclick="toggleAnimation()" id="btn-play" title="Play/Pause animação">
+                    <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                </button>
+                <button class="icon-btn" onclick="resetAnimation()" id="btn-reset" title="Reiniciar animação">
+                    <svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <div id="canvas-container"></div>
+
+        <div id="bottom-sheet">
+            <div id="drag-area">
+                <div id="drag-pill">
+                    <svg class="arrow-icon" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17L16.59 8.59L18 10L12 16L6 10L7.41 8.59Z"/></svg>
+                </div>
+            </div>
+            
+            <div id="panel-tabs">
+                <div class="tab active" onclick="switchTab('values')">VALORES</div>
+                <div class="tab" onclick="switchTab('animator')">ANIMAR (BLOCOS)</div>
+            </div>
+
+            <div id="panel-content">
+                <div id="view-values" class="view active">
+                    <div class="control-grid">
+                        <div class="control-group">
+                            <div class="group-label">Posição Global</div>
+                            <div class="prop-row"><span class="prop-label">X</span> <input type="number" id="inp_xpos" value="0" onchange="manualInput('xpos')"></div>
+                            <div class="prop-row"><span class="prop-label">Y</span> <input type="number" id="inp_ypos" value="0" onchange="manualInput('ypos')"></div>
+                            <div class="prop-row"><span class="prop-label">Z</span> <input type="number" id="inp_zpos" value="0" onchange="manualInput('zpos')"></div>
+                        </div>
+                        <div class="control-group">
+                            <div class="group-label">Rotação Global</div>
+                            <div class="prop-row"><span class="prop-label">X</span> <input type="number" id="inp_xrot" value="0" onchange="manualInput('xrot')"></div>
+                            <div class="prop-row"><span class="prop-label">Y</span> <input type="number" id="inp_yrot" value="0" onchange="manualInput('yrot')"></div>
+                            <div class="prop-row"><span class="prop-label">Z</span> <input type="number" id="inp_zrot" value="0" onchange="manualInput('zrot')"></div>
+                        </div>
+                        <div class="control-group">
+                            <div class="group-label">Escala Geral</div>
+                            <div class="prop-row">
+                                <span class="prop-label">S</span>
+                                <input type="range" id="sld_scale" min="0.1" max="3" step="0.1" value="1" oninput="updateScale('scale', this.value)">
+                                <span class="value-display" id="val_scale">1.0</span>
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <div class="group-label">Escala Largura (XZ)</div>
+                            <div class="prop-row">
+                                <span class="prop-label">XZ</span>
+                                <input type="range" id="sld_xzscale" min="0.1" max="3" step="0.1" value="1" oninput="updateScale('xzscale', this.value)">
+                                <span class="value-display" id="val_xzscale">1.0</span>
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <div class="group-label">Escala Altura (Y)</div>
+                            <div class="prop-row">
+                                <span class="prop-label">Y</span>
+                                <input type="range" id="sld_yscale" min="0.1" max="3" step="0.1" value="1" oninput="updateScale('yscale', this.value)">
+                                <span class="value-display" id="val_yscale">1.0</span>
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <div class="group-label">BasePos (Pivô)</div>
+                            <div class="prop-row"><span class="prop-label">X</span> <input type="number" id="inp_xbasepos" value="0" onchange="manualInput('xbasepos')"></div>
+                            <div class="prop-row"><span class="prop-label">Y</span> <input type="number" id="inp_ybasepos" value="0" onchange="manualInput('ybasepos')"></div>
+                            <div class="prop-row"><span class="prop-label">Z</span> <input type="number" id="inp_zbasepos" value="0" onchange="manualInput('zbasepos')"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-animator" class="view">
+                    <div id="animation-list"></div>
+                    <button id="add-anim-btn" onclick="addAnimBlock()">+ ADICIONAR EFEITO</button>
+                    <p style="text-align: center; font-size: 10px; color: #666; margin-top:10px;">Use isso para criar movimentos complexos (Molang) sem digitar código.</p>
+                </div>
+            </div>
+        </div>
+
+        <button id="export-fab" onclick="copyCommand()">
+            <svg style="width:20px;height:20px;fill:white" viewBox="0 0 24 24"><path d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z"/></svg>
+            <span>COPIAR</span>
+        </button>
+    </div>
+
+    <script>
+        // State global
+        window.appState = {
+            values: {
+                xpos: 0, ypos: 0, zpos: 0,
+                xrot: 0, yrot: 0, zrot: 0,
+                scale: 1, xzscale: 1, yscale: 1,
+                xbasepos: 0, ybasepos: 0, zbasepos: 0
+            },
+            molang: {},
+            animBlocks: [],
+            context: 'global',
+            tool: 'translate'
+        };
+
+        // Dados estáticos
+        const AnimTemplates = {
+            sine: { n: 'Onda', f: v => `${v.base}+math.sin(q.life_time*${v.spd})*${v.amp}` },
+            spin: { n: 'Girar', f: v => `q.life_time*${v.spd}` },
+            pulse: { n: 'Pulsar', f: v => `1+math.sin(q.life_time*${v.spd})*${v.amp/10}` }
+        };
+
+        const Targets = [
+            { k: 'xpos', n: 'Pos X' }, { k: 'ypos', n: 'Pos Y (Altura)' }, { k: 'zpos', n: 'Pos Z' },
+            { k: 'xrot', n: 'Rot X' }, { k: 'yrot', n: 'Rot Y (Giro)' }, { k: 'zrot', n: 'Rot Z (Tilt)' },
+            { k: 'scale', n: 'Escala Geral' }, { k: 'xzscale', n: 'Escala Largura' }, { k: 'yscale', n: 'Escala Altura' },
+            { k: 'xbasepos', n: 'BasePos X' }, { k: 'ybasepos', n: 'BasePos Y' }, { k: 'zbasepos', n: 'BasePos Z' }
+        ];
+    </script>
+
+    <script type="module">
+        import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+        import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+        import { TransformControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/TransformControls.js';
+
+        // ========== NAVIGATION ==========
+        class Navigation {
+            static enterEditor() {
+                document.getElementById('home-view').style.display = 'none';
+                document.getElementById('editor-view').style.display = 'flex';
+                sessionStorage.setItem('fmbe_session', 'active');
+                if(window.editor) window.editor.resize();
+            }
+            static setupHomeView() {
+                window.addEventListener('load', () => {
+                    sessionStorage.removeItem('fmbe_session');
+                    document.getElementById('home-view').style.display = 'flex';
+                    document.getElementById('editor-view').style.display = 'none';
+                });
+            }
+        }
+
+        // ========== THREE.JS EDITOR ==========
+        class ThreeJSEditor {
+            constructor(containerId, state) {
+                this.state = state;
+                this.container = document.getElementById(containerId);
+                this.startTime = Date.now();
+                this.isAnimationPlaying = true;
+                this.setupScene();
+                this.setupControls();
+                this.setupObjects();
+                this.animate();
+            }
+
+            setupScene() {
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x121212);
+                this.camera = new THREE.PerspectiveCamera(50, this.container.clientWidth / this.container.clientHeight, 0.1, 1000);
+                this.camera.position.set(30, 40, 40);
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.container.appendChild(this.renderer.domElement);
+                this.scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+                const dl = new THREE.DirectionalLight(0xffffff, 1);
+                dl.position.set(10, 20, 10);
+                this.scene.add(dl);
+                this.scene.add(new THREE.GridHelper(160, 10, 0x444444, 0x222222));
+                this.scene.add(new THREE.AxesHelper(10));
+            }
+
+            setupObjects() {
+                this.rootGroup = new THREE.Group();
+                this.scene.add(this.rootGroup);
+                this.rotGroup = new THREE.Group();
+                this.rootGroup.add(this.rotGroup);
+                this.scaleGroup = new THREE.Group();
+                this.rotGroup.add(this.scaleGroup);
+                this.offsetGroup = new THREE.Group();
+                this.scaleGroup.add(this.offsetGroup);
+                const mesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(16, 16, 16),
+                    new THREE.MeshStandardMaterial({ color: 0x5865F2, roughness: 0.3 })
+                );
+                this.offsetGroup.add(mesh);
+                const pivotMarker = new THREE.Mesh(
+                    new THREE.SphereGeometry(1),
+                    new THREE.MeshBasicMaterial({ color: 0xff0000 })
+                );
+                this.rootGroup.add(pivotMarker);
+            }
+
+            setupControls() {
+                this.orbit = new OrbitControls(this.camera, this.renderer.domElement);
+                this.orbit.enableDamping = true;
+                this.gizmo = new TransformControls(this.camera, this.renderer.domElement);
+                this.gizmo.setSize(1.0);
+                this.gizmo.addEventListener('dragging-changed', e => { this.orbit.enabled = !e.value; });
+                this.scene.add(this.gizmo);
+                this.gizmo.attach(this.rootGroup);
+                this.gizmo.addEventListener('change', () => this.onGizmoChange());
+            }
+
+            onGizmoChange() {
+                if (!this.orbit.enabled) {
+                    if (this.state.context === 'global') {
+                        if (this.state.tool === 'translate') {
+                            this.updateInput('xpos', this.rootGroup.position.x);
+                            this.updateInput('ypos', this.rootGroup.position.y);
+                            this.updateInput('zpos', this.rootGroup.position.z);
+                        }
+                        if (this.state.tool === 'rotate') {
+                            this.updateInput('xrot', this.rotGroup.rotation.x * 180 / Math.PI);
+                            this.updateInput('yrot', this.rotGroup.rotation.y * 180 / Math.PI);
+                            this.updateInput('zrot', this.rotGroup.rotation.z * 180 / Math.PI);
+                        }
+                        if (this.state.tool === 'scale') {
+                            this.updateInput('scale', this.scaleGroup.scale.x);
+                            this.updateInput('xzscale', this.scaleGroup.scale.x);
+                            this.updateInput('yscale', this.scaleGroup.scale.y);
+                        }
+                    } else {
+                        if (this.state.tool === 'translate') {
+                            this.updateInput('xbasepos', this.offsetGroup.position.x);
+                            this.updateInput('ybasepos', this.offsetGroup.position.y);
+                            this.updateInput('zbasepos', this.offsetGroup.position.z);
+                        }
+                    }
+                }
+            }
+
+            updateInput(key, val) {
+                this.state.values[key] = val;
+                const el = document.getElementById(`inp_${key}`);
+                if (el && document.activeElement !== el) {
+                    el.value = val.toFixed(1);
+                }
+                const slider = document.getElementById(`sld_${key}`);
+                if (slider) {
+                    slider.value = val;
+                    const display = document.getElementById(`val_${key}`);
+                    if (display) {
+                        display.textContent = val.toFixed(1);
+                    }
+                }
+            }
+
+            updateGizmo() {
+                this.gizmo.detach();
+                if (this.state.context === 'global') {
+                    if (this.state.tool === 'translate') {
+                        this.gizmo.setMode('translate');
+                        this.gizmo.attach(this.rootGroup);
+                    }
+                    if (this.state.tool === 'rotate') {
+                        this.gizmo.setMode('rotate');
+                        this.gizmo.attach(this.rotGroup);
+                    }
+                    if (this.state.tool === 'scale') {
+                        this.gizmo.setMode('scale');
+                        this.gizmo.attach(this.scaleGroup);
+                    }
+                } else {
+                    this.gizmo.setMode('translate');
+                    this.gizmo.attach(this.offsetGroup);
+                }
+            }
+
+            animate = () => {
+                requestAnimationFrame(this.animate);
+                if (document.getElementById('editor-view').style.display === 'none') return;
+                this.orbit.update();
+                const t = (Date.now() - this.startTime) / 1000;
+                const cur = {};
+                for (const k in this.state.values) {
+                    const isEditingGizmo = !this.orbit.enabled;
+                    if (this.state.molang[k] && this.isAnimationPlaying && !isEditingGizmo) {
+                        cur[k] = this.evalMolang(this.state.molang[k], t);
+                    } else {
+                        cur[k] = this.state.values[k];
+                    }
+                }
+                this.rootGroup.position.set(cur.xpos || 0, cur.ypos || 0, cur.zpos || 0);
+                this.rotGroup.rotation.order = 'ZYX';
+                this.rotGroup.rotation.set(
+                    (cur.xrot || 0) * Math.PI / 180,
+                    (cur.yrot || 0) * Math.PI / 180,
+                    (cur.zrot || 0) * Math.PI / 180
+                );
+                const s = (cur.scale !== undefined) ? cur.scale : 1;
+                const sx = (cur.xzscale !== undefined) ? cur.xzscale : 1;
+                const sy = (cur.yscale !== undefined) ? cur.yscale : 1;
+                this.scaleGroup.scale.set(s * sx, s * sy, s * sx);
+                this.offsetGroup.position.set(cur.xbasepos || 0, cur.ybasepos || 0, cur.zbasepos || 0);
+                this.renderer.render(this.scene, this.camera);
+            }
+
+            evalMolang(expr, t) {
+                try {
+                    const code = expr.toLowerCase().replace(/q\.life_time/g, t).replace(/math\./g, 'e.');
+                    return new Function('e', `return ${code}`)({
+                        sin: d => Math.sin(d * Math.PI / 180),
+                        cos: d => Math.cos(d * Math.PI / 180),
+                        abs: Math.abs,
+                        clamp: (v, a, b) => Math.max(a, Math.min(b, v))
+                    });
+                } catch { return 0; }
+            }
+
+            resize() {
+                this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+            }
+
+            setTool(tool) {
+                this.state.tool = tool;
+                document.querySelectorAll('.icon-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById(`tool-${tool}`).classList.add('active');
+                this.updateGizmo();
+            }
+
+            setContext(context) {
+                this.state.context = context;
+                document.querySelectorAll('.mode-opt').forEach(b => b.classList.remove('active'));
+                document.getElementById(`ctx-${context}`).classList.add('active');
+                this.updateGizmo();
+            }
+
+            toggleAnimation() {
+                this.isAnimationPlaying = !this.isAnimationPlaying;
+                return this.isAnimationPlaying;
+            }
+
+            resetAnimation() {
+                this.startTime = Date.now();
+            }
+        }
+
+        // ========== UI MANAGER ==========
+        class UIManager {
+            constructor(editor) {
+                this.editor = editor;
+            }
+
+            manualInput(key) {
+                const val = parseFloat(document.getElementById(`inp_${key}`).value) || 0;
+                window.appState.values[key] = val;
+                delete window.appState.molang[key];
+                document.getElementById(`inp_${key}`).classList.remove('has-molang');
+            }
+
+            updateScale(key, value) {
+                const val = parseFloat(value);
+                window.appState.values[key] = val;
+                delete window.appState.molang[key];
+                const displayEl = document.getElementById(`val_${key}`);
+                if (displayEl) {
+                    displayEl.textContent = val.toFixed(1);
+                }
+            }
+
+            addAnimBlock() {
+                window.appState.animBlocks.push({
+                    id: Date.now(),
+                    type: 'sine',
+                    target: 'ypos',
+                    spd: 100,
+                    amp: 5,
+                    base: 0
+                });
+                this.renderBlocks();
+            }
+
+            removeBlock(id) {
+                window.appState.animBlocks = window.appState.animBlocks.filter(b => b.id !== id);
+                this.renderBlocks();
+            }
+
+            updateBlock(id, field, val) {
+                const b = window.appState.animBlocks.find(x => x.id === id);
+                if (b) {
+                    b[field] = (field === 'spd' || field === 'amp' || field === 'base')
+                        ? parseFloat(val)
+                        : val;
+                    this.renderBlocks();
+                }
+            }
+
+            renderBlocks() {
+                const list = document.getElementById('animation-list');
+                list.innerHTML = '';
+                window.appState.molang = {};
+                document.querySelectorAll('input').forEach(i => i.classList.remove('has-molang'));
+
+                window.appState.animBlocks.forEach(b => {
+                    window.appState.molang[b.target] = AnimTemplates[b.type].f(b);
+                    document.getElementById(`inp_${b.target}`)?.classList.add('has-molang');
+
+                    const div = document.createElement('div');
+                    div.className = 'anim-block';
+
+                    let tOpts = Targets
+                        .map(t => `<option value="${t.k}" ${b.target === t.k ? 'selected' : ''}>${t.n}</option>`)
+                        .join('');
+                    let typeOpts = Object.keys(AnimTemplates)
+                        .map(k => `<option value="${k}" ${b.type === k ? 'selected' : ''}>${AnimTemplates[k].n}</option>`)
+                        .join('');
+
+                    div.innerHTML = `
+                        <div class="anim-header">
+                            <select style="width:65%" onchange="window.uiManager.updateBlock(${b.id},'target',this.value)">${tOpts}</select>
+                            <button class="btn-remove" onclick="window.uiManager.removeBlock(${b.id})">&times;</button>
+                        </div>
+                        <div class="anim-params">
+                            <select onchange="window.uiManager.updateBlock(${b.id},'type',this.value)">${typeOpts}</select>
+                            <input type="number" placeholder="Vel" value="${b.spd}" onchange="window.uiManager.updateBlock(${b.id},'spd',this.value)">
+                            <input type="number" placeholder="Int" value="${b.amp}" onchange="window.uiManager.updateBlock(${b.id},'amp',this.value)">
+                        </div>
+                    `;
+                    list.appendChild(div);
+                });
+            }
+
+            switchTab(t) {
+                document.querySelectorAll('.tab').forEach(e => e.classList.remove('active'));
+                document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
+                event.target.classList.add('active');
+                document.getElementById(`view-${t}`).classList.add('active');
+            }
+
+            copyCommand() {
+                let parts = [];
+                for (let k in window.appState.values) {
+                    let val = window.appState.values[k];
+                    let isDef = (k.includes('scale')) ? (val === 1) : (val === 0);
+                    if (window.appState.molang[k]) {
+                        parts.push(`v.${k}=${window.appState.molang[k]}`);
+                    } else if (!isDef) {
+                        parts.push(`v.${k}=${parseFloat(val.toFixed(2))}`);
+                    }
+                }
+                let str = parts.join(';') + ';';
+                let cmd = `/playanimation @e[tag=wiki:fmbe] animation.player.attack.positions none 0 "${str}" wiki:setvariable`;
+                
+                navigator.clipboard.writeText(cmd).then(() => {
+                    let btn = document.getElementById('export-fab');
+                    btn.querySelector('span').innerText = 'COPIADO!';
+                    setTimeout(() => btn.querySelector('span').innerText = 'COPIAR', 1500);
+                });
+            }
+        }
+
+        // ========== BOTTOM SHEET ==========
+        class BottomSheet {
+            constructor() {
+                this.sheet = document.getElementById('bottom-sheet');
+                this.dragArea = document.getElementById('drag-area');
+                this.dragPill = document.getElementById('drag-pill');
+                this.startY = 0;
+                this.startH = 0;
+                this.isDragging = false;
+                this.isCollapsed = false;
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                this.dragArea.addEventListener('touchstart', (e) => {
+                    this.startY = e.touches[0].clientY;
+                    this.startH = this.sheet.clientHeight;
+                    this.isDragging = false;
+                }, { passive: false });
+
+                this.dragArea.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    const delta = this.startY - e.touches[0].clientY;
+                    if (Math.abs(delta) > 5) this.isDragging = true;
+                    if (this.isDragging && !this.isCollapsed) {
+                        let newH = this.startH + delta;
+                        if (newH > 80 && newH < window.innerHeight - 50) {
+                            this.sheet.style.height = `${newH}px`;
+                        }
+                    }
+                }, { passive: false });
+
+                this.dragArea.addEventListener('click', () => {
+                    if (!this.isDragging) this.toggle();
+                });
+            }
+
+            toggle() {
+                this.isCollapsed = !this.isCollapsed;
+                if (this.isCollapsed) {
+                    this.sheet.dataset.prevHeight = this.sheet.style.height || '45%';
+                    this.sheet.style.height = '30px';
+                    this.dragPill.parentElement.classList.add('collapsed');
+                } else {
+                    this.sheet.style.height = this.sheet.dataset.prevHeight || '45%';
+                    this.dragPill.parentElement.classList.remove('collapsed');
+                }
+            }
+        }
+
+        // ========== INICIALIZAÇÃO ==========
+        window.editor = new ThreeJSEditor('canvas-container', window.appState);
+        window.uiManager = new UIManager(window.editor);
+        window.bottomSheet = new BottomSheet();
+
+        // Google AdSense
+        function initAds() {
+            const adTop = document.getElementById('ad-top');
+            const adBottom = document.getElementById('ad-bottom');
+            
+            adTop.innerHTML = `
+                <ins class="adsbygoogle"
+                     style="display:block"
+                     data-ad-client="ca-pub-6145415442076452"
+                     data-ad-slot="1234567890"
+                     data-ad-format="auto"
+                     data-full-width-responsive="true"></ins>
+            `;
+            
+            adBottom.innerHTML = `
+                <ins class="adsbygoogle"
+                     style="display:block"
+                     data-ad-client="ca-pub-6145415442076452"
+                     data-ad-slot="0987654321"
+                     data-ad-format="auto"
+                     data-full-width-responsive="true"></ins>
+            `;
+
+            if (window.adsbygoogle) {
+                window.adsbygoogle.push({});
+            }
+        }
+
+        // Global functions
+        window.enterEditor = () => Navigation.enterEditor();
+        window.setTool = (t) => window.editor.setTool(t);
+        window.setContext = (c) => window.editor.setContext(c);
+        window.manualInput = (k) => window.uiManager.manualInput(k);
+        window.updateScale = (k, v) => window.uiManager.updateScale(k, v);
+        window.addAnimBlock = () => window.uiManager.addAnimBlock();
+        window.removeBlock = (id) => window.uiManager.removeBlock(id);
+        window.updateBlock = (id, field, val) => window.uiManager.updateBlock(id, field, val);
+        window.switchTab = (t) => window.uiManager.switchTab(t);
+        window.copyCommand = () => window.uiManager.copyCommand();
+        window.resizeEditor = () => window.editor.resize();
+        
+        window.toggleAnimation = () => {
+            const isPlaying = window.editor.toggleAnimation();
+            const btn = document.getElementById('btn-play');
+            if (isPlaying) {
+                btn.classList.add('active');
+                btn.title = 'Pausar animação';
+            } else {
+                btn.classList.remove('active');
+                btn.title = 'Play animação';
+            }
+        };
+        
+        window.resetAnimation = () => {
+            window.editor.resetAnimation();
+        };
+
+        Navigation.setupHomeView();
+        window.addEventListener('resize', () => window.editor.resize());
+        
+        // Inicializar anúncios
+        setTimeout(initAds, 500);
+    </script>
+</body>
+</html>
